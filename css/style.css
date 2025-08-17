@@ -1,0 +1,503 @@
+/* Custom Styles for School Fee Management System */
+
+/* Global Font Family Override */
+* {
+    font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+}
+
+body {
+    font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+}
+
+/* Tab Navigation */
+.tab-btn.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+.tab-btn {
+    transition: all 0.2s ease-in-out;
+}
+
+.tab-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Print Styles */
+@media print {
+    @page {
+        size: A5;
+        margin: 10mm;
+    }
+    
+    body * {
+        visibility: hidden;
+    }
+    
+    #receiptContent, #receiptContent * {
+        visibility: visible;
+    }
+    
+    #receiptContent {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: 400px;
+        background: white;
+        padding: 15px;
+        box-shadow: none;
+        border: none;
+        font-size: 12px;
+        line-height: 1.3;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    /* Print specific styles */
+    .receipt-header {
+        text-align: center;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #000;
+        padding-bottom: 10px;
+    }
+    
+    .receipt-school-name {
+        font-size: 14px !important;
+        font-weight: bold;
+        margin-bottom: 3px;
+    }
+    
+    .receipt-title {
+        font-size: 12px !important;
+        font-weight: bold;
+        text-decoration: underline;
+    }
+    
+    .receipt-details {
+        margin-bottom: 15px;
+    }
+    
+    .receipt-info-row {
+        margin: 3px 0;
+        font-size: 11px;
+    }
+    
+    .fee-breakdown-table {
+        font-size: 11px;
+        margin: 10px 0;
+    }
+    
+    .fee-breakdown-table th,
+    .fee-breakdown-table td {
+        border: 1px solid #000;
+        padding: 4px;
+        text-align: left;
+    }
+    
+    .total-row {
+        font-weight: bold;
+        font-size: 12px;
+        background-color: #f0f0f0;
+    }
+}
+
+/* Receipt Preview Styles */
+.receipt-preview {
+    font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    background: white;
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin: 10px 0;
+}
+
+.receipt-header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 15px;
+}
+
+.receipt-school-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.receipt-title {
+    font-size: 16px;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.receipt-details {
+    margin: 15px 0;
+}
+
+.receipt-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 5px 0;
+}
+
+.fee-breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+}
+
+.fee-breakdown-table th,
+.fee-breakdown-table td {
+    border: 1px solid #333;
+    padding: 8px;
+    text-align: left;
+}
+
+.fee-breakdown-table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.total-row {
+    font-weight: bold;
+    background-color: #f0f0f0;
+}
+
+/* Hover Effects */
+.hover-card {
+    transition: all 0.2s ease-in-out;
+}
+
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Status Badges */
+.status-paid {
+    background-color: #10b981;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-unpaid {
+    background-color: #ef4444;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-overdue {
+    background-color: #f59e0b;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-partial {
+    background-color: #f97316;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background-color: #6b7280;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Payment Status Indicators */
+.payment-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.payment-paid-full {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.payment-partial {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.payment-overdue {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.payment-pending {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+/* Payment History Timeline */
+.payment-timeline {
+    position: relative;
+    padding-left: 20px;
+}
+
+.payment-timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb;
+}
+
+.payment-timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.payment-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #e5e7eb;
+}
+
+.payment-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.payment-timeline-item:last-child::after {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 20px;
+    bottom: 0;
+    width: 2px;
+    background: white;
+}
+
+/* Enhanced Table Styles */
+.payment-table-row {
+    transition: all 0.2s ease-in-out;
+}
+
+.payment-table-row:hover {
+    background-color: #f8fafc;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Payment Amount Styling */
+.payment-amount-due {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.payment-amount-paid {
+    color: #059669;
+    font-weight: 600;
+}
+
+/* Summary Card Enhancements */
+.summary-card {
+    transition: all 0.3s ease-in-out;
+    border: 1px solid #e5e7eb;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    border-color: #3b82f6;
+}
+
+.summary-card-icon {
+    transition: all 0.3s ease-in-out;
+}
+
+.summary-card:hover .summary-card-icon {
+    transform: scale(1.1);
+}
+
+/* Payment Method Icons */
+.payment-method-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    margin-right: 8px;
+}
+
+.payment-method-cash {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.payment-method-check {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.payment-method-bank {
+    background-color: #f3e8ff;
+    color: #7c3aed;
+}
+
+.payment-method-online {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.payment-method-upi {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.payment-method-card {
+    background-color: #f0f9ff;
+    color: #0369a1;
+}
+
+/* Export Button Enhancements */
+.export-button {
+    position: relative;
+    overflow: hidden;
+}
+
+.export-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.export-button:hover::before {
+    left: 100%;
+}
+
+/* Filter Badge Styles */
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 4px;
+}
+
+/* Modal Enhancements */
+.modal-overlay {
+    backdrop-filter: blur(4px);
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Notification Enhancements */
+.notification {
+    animation: notificationSlideIn 0.3s ease-out;
+}
+
+@keyframes notificationSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+    backdrop-filter: blur(4px);
+}
+
+/* Responsive Table */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 14px;
+    }
+    
+    .table-responsive th,
+    .table-responsive td {
+        padding: 8px 4px;
+    }
+}
