@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Fee Management - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Poppins', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                        <i data-lucide="graduation-cap" class="h-5 w-5 text-white"></i>
+                    </div>
+                    <h1 class="text-xl font-semibold text-gray-900">Gyanodaya Ma. Vi. Fee Management</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="userEmail" class="text-sm text-gray-600"></span>
+                    <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                        <i data-lucide="log-out" class="h-4 w-4 mr-1 inline"></i>
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Tab Navigation -->
+        <div class="bg-white rounded-lg shadow-sm mb-8">
+            <nav class="flex border-b border-gray-200">
+                <button id="dashboardTab" class="tab-btn active py-4 px-6 text-sm font-medium border-b-2 border-blue-500 text-blue-600">
+                    <i data-lucide="layout-dashboard" class="h-4 w-4 mr-2 inline"></i>
+                    Dashboard
+                </button>
+                <button id="studentsTab" class="tab-btn py-4 px-6 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300">
+                    <i data-lucide="users" class="h-4 w-4 mr-2 inline"></i>
+                    Students
+                </button>
+                <button id="paymentsTab" class="tab-btn py-4 px-6 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300">
+                    <i data-lucide="credit-card" class="h-4 w-4 mr-2 inline"></i>
+                    Payments
+                </button>
+                <button id="feesTab" class="tab-btn py-4 px-6 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300">
+                    <i data-lucide="dollar-sign" class="h-4 w-4 mr-2 inline"></i>
+                    Fee Structure
+                </button>
+                <button id="billsTab" class="tab-btn py-4 px-6 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300">
+                    <i data-lucide="file-text" class="h-4 w-4 mr-2 inline"></i>
+                    Bills & Receipts
+                </button>
+            </nav>
+        </div>
+
+        <!-- Dashboard Tab Content -->
+        <div id="dashboardContent" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <!-- Summary Cards -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <i data-lucide="users" class="h-8 w-8 text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Students</p>
+                            <p id="totalStudents" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <i data-lucide="dollar-sign" class="h-8 w-8 text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Fees Collected</p>
+                            <p id="totalCollected" class="text-2xl font-bold text-gray-900">₹0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-100 rounded-full">
+                            <i data-lucide="clock" class="h-8 w-8 text-yellow-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Pending Bills</p>
+                            <p id="pendingBills" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-purple-100 rounded-full">
+                            <i data-lucide="layers" class="h-8 w-8 text-purple-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Classes (1-12)</p>
+                            <p id="totalClasses" class="text-2xl font-bold text-gray-900">12</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Class-wise Statistics -->
+            <div class="bg-white rounded-lg shadow-sm mb-8">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Class-wise Student Distribution</h3>
+                </div>
+                <div class="p-6">
+                    <div id="classStatsGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <!-- Class statistics will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Students Tab Content -->
+        <div id="studentsContent" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900">Manage Students</h3>
+                        <div class="flex space-x-2">
+                            <button id="importExcelBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i data-lucide="upload" class="h-4 w-4 mr-2 inline"></i>
+                                Import Excel
+                            </button>
+                            <button id="addStudentBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i data-lucide="plus" class="h-4 w-4 mr-2 inline"></i>
+                                Add Student
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Search and Filter Controls -->
+                    <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-3 h-4 w-4 text-gray-400"></i>
+                            <input type="text" id="searchStudents" placeholder="Search by name or roll number..."
+                                   class="pl-10 border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <select id="filterByClass" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Classes</option>
+                            <option value="1">Class 1</option>
+                            <option value="2">Class 2</option>
+                            <option value="3">Class 3</option>
+                            <option value="4">Class 4</option>
+                            <option value="5">Class 5</option>
+                            <option value="6">Class 6</option>
+                            <option value="7">Class 7</option>
+                            <option value="8">Class 8</option>
+                            <option value="9">Class 9</option>
+                            <option value="10">Class 10</option>
+                            <option value="11">Class 11</option>
+                            <option value="12">Class 12</option>
+                        </select>
+                        
+                        <select id="sortStudents" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="name">Sort by Name</option>
+                            <option value="class">Sort by Class</option>
+                            <option value="roll">Sort by Roll Number</option>
+                        </select>
+                        
+                        <button id="clearFilters" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            <i data-lucide="x" class="h-4 w-4 mr-2 inline"></i>
+                            Clear Filters
+                        </button>
+                    </div>
+                    
+                    <!-- Add Student Form -->
+                    <div id="addStudentForm" class="hidden mb-6 p-4 bg-gray-50 rounded-lg">
+                        <form id="studentForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <input type="text" id="studentName" placeholder="Student Name" required
+                                   class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            <select id="studentClass" required
+                                    class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Select Class</option>
+                                <option value="1">Class 1</option>
+                                <option value="2">Class 2</option>
+                                <option value="3">Class 3</option>
+                                <option value="4">Class 4</option>
+                                <option value="5">Class 5</option>
+                                <option value="6">Class 6</option>
+                                <option value="7">Class 7</option>
+                                <option value="8">Class 8</option>
+                                <option value="9">Class 9</option>
+                                <option value="10">Class 10</option>
+                                <option value="11">Class 11</option>
+                                <option value="12">Class 12</option>
+                            </select>
+                            
+                            <input type="number" id="studentRoll" placeholder="Roll Number" required min="1"
+                                   class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            <div class="flex space-x-2">
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm flex-1">
+                                    Save
+                                </button>
+                                <button type="button" id="cancelStudentBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm flex-1">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Student Count Badge -->
+                <div class="px-6 py-3 bg-blue-50 border-b border-gray-200">
+                    <p class="text-sm text-blue-700">
+                        <span id="filteredStudentCount">0</span> students found
+                        <span id="classFilterInfo" class="ml-2"></span>
+                    </p>
+                </div>
+                
+                <!-- Students Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <button id="sortByName" class="flex items-center hover:text-gray-700">
+                                        Name <i data-lucide="chevron-up-down" class="h-4 w-4 ml-1"></i>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <button id="sortByClass" class="flex items-center hover:text-gray-700">
+                                        Class <i data-lucide="chevron-up-down" class="h-4 w-4 ml-1"></i>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <button id="sortByRoll" class="flex items-center hover:text-gray-700">
+                                        Roll No. <i data-lucide="chevron-up-down" class="h-4 w-4 ml-1"></i>
+                                    </button>
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Students will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fee Structure Tab Content -->
+        <div id="feesContent" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900">Class-wise Fee Structure</h3>
+                        <button id="addFeeBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            <i data-lucide="plus" class="h-4 w-4 mr-2 inline"></i>
+                            Add Fee Category
+                        </button>
+                    </div>
+                    
+                    <!-- Fee Filter Controls -->
+                    <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <select id="filterFeesByClass" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Classes</option>
+                            <option value="1-5">Primary (1-5)</option>
+                            <option value="6-8">Middle (6-8)</option>
+                            <option value="9-10">Secondary (9-10)</option>
+                            <option value="11-12">Senior Secondary (11-12)</option>
+                            <option value="1">Class 1</option>
+                            <option value="2">Class 2</option>
+                            <option value="3">Class 3</option>
+                            <option value="4">Class 4</option>
+                            <option value="5">Class 5</option>
+                            <option value="6">Class 6</option>
+                            <option value="7">Class 7</option>
+                            <option value="8">Class 8</option>
+                            <option value="9">Class 9</option>
+                            <option value="10">Class 10</option>
+                            <option value="11">Class 11</option>
+                            <option value="12">Class 12</option>
+                        </select>
+                        
+                        <select id="filterFeesByType" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Types</option>
+                            <option value="true">Mandatory Only</option>
+                            <option value="false">Optional Only</option>
+                        </select>
+                        
+                        <button id="clearFeeFilters" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            <i data-lucide="x" class="h-4 w-4 mr-2 inline"></i>
+                            Clear Filters
+                        </button>
+                    </div>
+                    
+                    <!-- Add Fee Form -->
+                    <div id="addFeeForm" class="hidden mb-6 p-4 bg-gray-50 rounded-lg">
+                        <form id="feeForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <input type="text" id="feeName" placeholder="Fee Name (e.g., Tuition Fee)" required
+                                   class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            <input type="number" id="feeAmount" placeholder="Amount" required min="0"
+                                   class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            <select id="feeMandatory" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="true">Mandatory</option>
+                                <option value="false">Optional</option>
+                            </select>
+                            
+                            <select id="feeClassFrom" required class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">From Class</option>
+                                <option value="1">Class 1</option>
+                                <option value="2">Class 2</option>
+                                <option value="3">Class 3</option>
+                                <option value="4">Class 4</option>
+                                <option value="5">Class 5</option>
+                                <option value="6">Class 6</option>
+                                <option value="7">Class 7</option>
+                                <option value="8">Class 8</option>
+                                <option value="9">Class 9</option>
+                                <option value="10">Class 10</option>
+                                <option value="11">Class 11</option>
+                                <option value="12">Class 12</option>
+                            </select>
+                            
+                            <select id="feeClassTo" required class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">To Class</option>
+                                <option value="1">Class 1</option>
+                                <option value="2">Class 2</option>
+                                <option value="3">Class 3</option>
+                                <option value="4">Class 4</option>
+                                <option value="5">Class 5</option>
+                                <option value="6">Class 6</option>
+                                <option value="7">Class 7</option>
+                                <option value="8">Class 8</option>
+                                <option value="9">Class 9</option>
+                                <option value="10">Class 10</option>
+                                <option value="11">Class 11</option>
+                                <option value="12">Class 12</option>
+                            </select>
+                            
+                            <div class="flex space-x-2">
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm flex-1">
+                                    Save
+                                </button>
+                                <button type="button" id="cancelFeeBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm flex-1">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Fee Structure Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fee Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applicable Classes</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feesTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Fees will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bills Tab Content -->
+        <div id="billsContent" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900">Bills & Receipts</h3>
+                        <button id="generateBillsBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            <i data-lucide="file-plus" class="h-4 w-4 mr-2 inline"></i>
+                            Generate Bills
+                        </button>
+                    </div>
+                    
+                    <!-- Search and Filter Controls -->
+                    <div class="mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-3 h-4 w-4 text-gray-400"></i>
+                            <input type="text" id="searchBills" placeholder="Search by student name or amount..."
+                                   class="pl-10 border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <select id="filterBillsByClass" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Classes</option>
+                            <option value="1">Class 1</option>
+                            <option value="2">Class 2</option>
+                            <option value="3">Class 3</option>
+                            <option value="4">Class 4</option>
+                            <option value="5">Class 5</option>
+                            <option value="6">Class 6</option>
+                            <option value="7">Class 7</option>
+                            <option value="8">Class 8</option>
+                            <option value="9">Class 9</option>
+                            <option value="10">Class 10</option>
+                            <option value="11">Class 11</option>
+                            <option value="12">Class 12</option>
+                        </select>
+                        
+                        <select id="filterBillsByStatus" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Statuses</option>
+                            <option value="paid">Paid</option>
+                            <option value="unpaid">Unpaid</option>
+                            <option value="partial">Partial</option>
+                        </select>
+                        
+                        <select id="sortBills" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="name">Sort by Name</option>
+                            <option value="amount">Sort by Amount</option>
+                            <option value="date">Sort by Date</option>
+                            <option value="status">Sort by Status</option>
+                        </select>
+                        
+                        <button id="clearBillFilters" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            <i data-lucide="x" class="h-4 w-4 mr-2 inline"></i>
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Bills Count Badge -->
+                <div class="px-6 py-3 bg-blue-50 border-b border-gray-200">
+                    <p class="text-sm text-blue-700">
+                        <span id="filteredBillsCount">0</span> bills found
+                        <span id="billsFilterInfo" class="ml-2"></span>
+                    </p>
+                </div>
+                
+                <!-- Bills Grid -->
+                <div id="billsGrid" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Bills will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments Tab Content -->
+        <div id="paymentsContent" class="tab-content hidden">
+            <!-- Payment Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <i data-lucide="trending-up" class="h-8 w-8 text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Collected</p>
+                            <p id="totalPaymentsCollected" class="text-2xl font-bold text-gray-900">₹0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-red-100 rounded-full">
+                            <i data-lucide="trending-down" class="h-8 w-8 text-red-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Outstanding</p>
+                            <p id="totalOutstanding" class="text-2xl font-bold text-gray-900">₹0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-100 rounded-full">
+                            <i data-lucide="clock" class="h-8 w-8 text-yellow-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Overdue Payments</p>
+                            <p id="overdueCount" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <i data-lucide="percent" class="h-8 w-8 text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Collection Rate</p>
+                            <p id="collectionRate" class="text-2xl font-bold text-gray-900">0%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Tracking Dashboard -->
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900">Payment Tracking Dashboard</h3>
+                        <div class="flex space-x-2">
+                            <button id="addPaymentBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i data-lucide="plus" class="h-4 w-4 mr-2 inline"></i>
+                                Add Payment
+                            </button>
+                            <button id="exportPaymentsBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i data-lucide="download" class="h-4 w-4 mr-2 inline"></i>
+                                Export
+                            </button>
+                            <button id="sendOverdueNoticesBtn" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i data-lucide="bell" class="h-4 w-4 mr-2 inline"></i>
+                                Send Notices
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Filters and Search -->
+                    <div class="mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-3 h-4 w-4 text-gray-400"></i>
+                            <input type="text" id="searchPayments" placeholder="Search by name, ID, or amount..."
+                                   class="pl-10 border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <select id="filterPaymentStatus" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Payment Statuses</option>
+                            <option value="paid_full">Paid in Full</option>
+                            <option value="partial_payment">Partial Payment</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                        
+                        <select id="filterPaymentClass" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Classes</option>
+                            <option value="1">Class 1</option>
+                            <option value="2">Class 2</option>
+                            <option value="3">Class 3</option>
+                            <option value="4">Class 4</option>
+                            <option value="5">Class 5</option>
+                            <option value="6">Class 6</option>
+                            <option value="7">Class 7</option>
+                            <option value="8">Class 8</option>
+                            <option value="9">Class 9</option>
+                            <option value="10">Class 10</option>
+                            <option value="11">Class 11</option>
+                            <option value="12">Class 12</option>
+                        </select>
+                        
+                        <select id="sortPayments" class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="name">Sort by Name</option>
+                            <option value="amount_due">Sort by Amount Due</option>
+                            <option value="last_payment">Sort by Last Payment</option>
+                            <option value="status">Sort by Status</option>
+                        </select>
+                        
+                        <button id="clearPaymentFilters" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium">
+                            <i data-lucide="x" class="h-4 w-4 mr-2 inline"></i>
+                            Clear Filters
+                        </button>
+                    </div>
+                    
+                    <!-- Add Payment Form -->
+                    <div id="addPaymentForm" class="hidden mb-6 p-4 bg-gray-50 rounded-lg">
+                        <form id="paymentForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <select id="paymentStudentId" required class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Select Student</option>
+                            </select>
+                            
+                            <input type="number" id="paymentAmount" placeholder="Amount Paid" required min="0" step="0.01"
+                                   class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            <select id="feeNameSelect" required class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Select Fee Name</option>
+                            </select>
+                            
+                            <input type="text" id="paymentReference" placeholder="Reference/Transaction ID"
+                                   class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            <input type="date" id="paymentDate" required
+                                   class="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            
+                            <div class="flex space-x-2">
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm flex-1">
+                                    <i data-lucide="plus" class="h-4 w-4 mr-1 inline"></i>
+                                    Add Payment
+                                </button>
+                                <button type="button" id="cancelPaymentBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm flex-1">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Payment Count Badge -->
+                <div class="px-6 py-3 bg-blue-50 border-b border-gray-200">
+                    <p class="text-sm text-blue-700">
+                        <span id="filteredPaymentCount">0</span> students found
+                        <span id="paymentFilterInfo" class="ml-2"></span>
+                    </p>
+                </div>
+                
+                <!-- Payment Tracking Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Student Details
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Payment Status
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Amount Due
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Amount Paid
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Last Payment
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentsTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Payment tracking data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History Modal -->
+    <div id="paymentHistoryModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Payment History</h3>
+                <button id="closePaymentHistoryModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <div id="paymentHistoryContent" class="max-h-96 overflow-y-auto">
+                <!-- Payment history will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Export Financial Report</h3>
+                <button id="closeExportModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <form id="exportForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+                    <select id="exportFormat" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="csv">CSV Format</option>
+                        <option value="pdf">PDF Report</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+                    <select id="reportType" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="summary">Summary Report</option>
+                        <option value="detailed">Detailed Transactions</option>
+                        <option value="overdue">Overdue Payments</option>
+                        <option value="class_wise">Class-wise Report</option>
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+                        <input type="date" id="exportFromDate" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+                        <input type="date" id="exportToDate" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        <i data-lucide="download" class="h-4 w-4 mr-2 inline"></i>
+                        Generate Report
+                    </button>
+                    <button type="button" id="cancelExportBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Print Receipt Modal -->
+    <div id="receiptModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Fee Receipt</h3>
+                <button id="closeReceiptModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <!-- Receipt Content -->
+            <div id="receiptContent" class="border border-gray-300 rounded-lg p-6 mb-4">
+                <!-- Receipt will be generated here -->
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button id="printReceiptBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                    <i data-lucide="printer" class="h-4 w-4 mr-2 inline"></i>
+                    Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Student Modal -->
+    <div id="editStudentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Edit Student</h3>
+                <button id="closeEditStudentModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <form id="editStudentForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student Name</label>
+                    <input type="text" id="editStudentName" required
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                    <select id="editStudentClass" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Class</option>
+                        <option value="1">Class 1</option>
+                        <option value="2">Class 2</option>
+                        <option value="3">Class 3</option>
+                        <option value="4">Class 4</option>
+                        <option value="5">Class 5</option>
+                        <option value="6">Class 6</option>
+                        <option value="7">Class 7</option>
+                        <option value="8">Class 8</option>
+                        <option value="9">Class 9</option>
+                        <option value="10">Class 10</option>
+                        <option value="11">Class 11</option>
+                        <option value="12">Class 12</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Roll Number</label>
+                    <input type="number" id="editStudentRoll" required min="1"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        <i data-lucide="save" class="h-4 w-4 mr-2 inline"></i>
+                        Update Student
+                    </button>
+                    <button type="button" id="cancelEditStudentBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Add New Student</h3>
+                <button id="closeAddStudentModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <form id="addStudentModalForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student Name</label>
+                    <input type="text" id="addStudentModalName" required
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                    <select id="addStudentModalClass" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Class</option>
+                        <option value="1">Class 1</option>
+                        <option value="2">Class 2</option>
+                        <option value="3">Class 3</option>
+                        <option value="4">Class 4</option>
+                        <option value="5">Class 5</option>
+                        <option value="6">Class 6</option>
+                        <option value="7">Class 7</option>
+                        <option value="8">Class 8</option>
+                        <option value="9">Class 9</option>
+                        <option value="10">Class 10</option>
+                        <option value="11">Class 11</option>
+                        <option value="12">Class 12</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Roll Number</label>
+                    <input type="number" id="addStudentModalRoll" required min="1"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        <i data-lucide="plus" class="h-4 w-4 mr-2 inline"></i>
+                        Add Student
+                    </button>
+                    <button type="button" id="cancelAddStudentBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Payment Modal -->
+    <div id="addPaymentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Add New Payment</h3>
+                <button id="closeAddPaymentModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <form id="addPaymentModalForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student</label>
+                    <select id="addPaymentModalStudentId" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Student</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount Paid</label>
+                    <input type="number" id="addPaymentModalAmount" required min="0" step="0.01"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fee Name</label>
+                    <select id="addPaymentModalFeeSelect" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Fee Name</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Reference/Transaction ID</label>
+                    <input type="text" id="addPaymentModalReference"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date</label>
+                    <input type="date" id="addPaymentModalDate" required
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        <i data-lucide="plus" class="h-4 w-4 mr-2 inline"></i>
+                        Add Payment
+                    </button>
+                    <button type="button" id="cancelAddPaymentBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Payment Modal -->
+    <div id="editPaymentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Edit Payment</h3>
+                <button id="closeEditPaymentModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <form id="editPaymentModalForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student</label>
+                    <input type="text" id="editPaymentStudentName" readonly
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-gray-600 focus:outline-none">
+                    <input type="hidden" id="editPaymentStudentId">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount Paid</label>
+                    <input type="number" id="editPaymentAmount" required min="0" step="0.01"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fee Name</label>
+                    <select id="editPaymentFeeSelect" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Fee Name</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Reference/Transaction ID</label>
+                    <input type="text" id="editPaymentReference"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date</label>
+                    <input type="date" id="editPaymentDate" required
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <input type="hidden" id="editPaymentId">
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        <i data-lucide="save" class="h-4 w-4 mr-2 inline"></i>
+                        Update Payment
+                    </button>
+                    <button type="button" id="cancelEditPaymentBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Fee Category Modal -->
+    <div id="addFeeModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Add Fee Category</h3>
+                <button id="closeAddFeeModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <form id="addFeeModalForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fee Name</label>
+                    <input type="text" id="addFeeModalName" placeholder="e.g., Tuition Fee" required
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                    <input type="number" id="addFeeModalAmount" required min="0"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fee Type</label>
+                    <select id="addFeeModalMandatory"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="true">Mandatory</option>
+                        <option value="false">Optional</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">From Class</label>
+                    <select id="addFeeModalClassFrom" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">From Class</option>
+                        <option value="1">Class 1</option>
+                        <option value="2">Class 2</option>
+                        <option value="3">Class 3</option>
+                        <option value="4">Class 4</option>
+                        <option value="5">Class 5</option>
+                        <option value="6">Class 6</option>
+                        <option value="7">Class 7</option>
+                        <option value="8">Class 8</option>
+                        <option value="9">Class 9</option>
+                        <option value="10">Class 10</option>
+                        <option value="11">Class 11</option>
+                        <option value="12">Class 12</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">To Class</label>
+                    <select id="addFeeModalClassTo" required
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">To Class</option>
+                        <option value="1">Class 1</option>
+                        <option value="2">Class 2</option>
+                        <option value="3">Class 3</option>
+                        <option value="4">Class 4</option>
+                        <option value="5">Class 5</option>
+                        <option value="6">Class 6</option>
+                        <option value="7">Class 7</option>
+                        <option value="8">Class 8</option>
+                        <option value="9">Class 9</option>
+                        <option value="10">Class 10</option>
+                        <option value="11">Class 11</option>
+                        <option value="12">Class 12</option>
+                    </select>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        <i data-lucide="plus" class="h-4 w-4 mr-2 inline"></i>
+                        Add Fee Category
+                    </button>
+                    <button type="button" id="cancelAddFeeBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Excel Import Modal -->
+    <div id="excelImportModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Import Students from Excel</h3>
+                <button id="closeExcelImportModal" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-2">Upload an Excel file with columns: Name, Class, Roll Number</p>
+                <p class="text-xs text-gray-500 mb-4">Existing students with same class and roll number will be skipped.</p>
+                
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls"
+                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </div>
+            
+            <div id="importPreview" class="hidden mb-4 max-h-40 overflow-y-auto">
+                <h4 class="text-sm font-medium text-gray-900 mb-2">Preview:</h4>
+                <div id="previewContent" class="text-xs bg-gray-50 p-3 rounded border"></div>
+            </div>
+            
+            <div id="importResults" class="hidden mb-4">
+                <h4 class="text-sm font-medium text-gray-900 mb-2">Import Results:</h4>
+                <div id="resultsContent" class="text-xs bg-gray-50 p-3 rounded border"></div>
+            </div>
+            
+            <div class="flex space-x-3 pt-4">
+                <button id="processImportBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium" disabled>
+                    <i data-lucide="upload" class="h-4 w-4 mr-2 inline"></i>
+                    Import Students
+                </button>
+                <button id="cancelImportBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRth-jT24KqpMCaK3DIOJxw9KOgnJt1Lw",
+            authDomain: "school-fee-management-47766.firebaseapp.com",
+            projectId: "school-fee-management-47766",
+            storageBucket: "school-fee-management-47766.firebasestorage.app",
+            messagingSenderId: "255952783346",
+            appId: "1:255952783346:web:b89bb22ed3569c2d1b8d6b"
+        };
+        
+        console.log('Initializing Firebase with config:', firebaseConfig);
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        console.log('Firebase initialized successfully');
+        
+        // Make available globally
+        window.auth = auth;
+        window.db = db;
+    </script>
+    
+    <!-- SheetJS for Excel Reading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+    
+    <!-- Main App Script -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
