@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Dropdown Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Fee Name Dropdown Test</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Payment Form</h2>
+            
+            <form class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <select id="studentSelect" class="border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">Select Student</option>
+                    <option value="student1" data-class="5">John Doe (Class 5)</option>
+                    <option value="student2" data-class="8">Jane Smith (Class 8)</option>
+                    <option value="student3" data-class="12">Bob Wilson (Class 12)</option>
+                </select>
+                
+                <input type="number" placeholder="Amount Paid" class="border border-gray-300 rounded-md px-3 py-2">
+                
+                <select id="feeNameSelect" class="border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">Select Fee Name</option>
+                </select>
+            </form>
+            
+            <div id="result" class="mt-4 p-4 bg-gray-100 rounded hidden">
+                <h3 class="font-semibold">Selected:</h3>
+                <p id="resultText"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock fee data
+        const mockFees = [
+            { fee_name: 'Tuition Fee', amount: 5000, class_from: 1, class_to: 12 },
+            { fee_name: 'Library Fee', amount: 500, class_from: 1, class_to: 10 },
+            { fee_name: 'Lab Fee', amount: 1000, class_from: 6, class_to: 12 },
+            { fee_name: 'Sports Fee', amount: 750, class_from: 1, class_to: 12 },
+            { fee_name: 'Computer Fee', amount: 1500, class_from: 9, class_to: 12 }
+        ];
+
+        function populateFeeNames() {
+            const studentSelect = document.getElementById('studentSelect');
+            const feeNameSelect = document.getElementById('feeNameSelect');
+            const result = document.getElementById('result');
+            const resultText = document.getElementById('resultText');
+            
+            const selectedOption = studentSelect.options[studentSelect.selectedIndex];
+            
+            if (!selectedOption || !selectedOption.dataset.class) {
+                feeNameSelect.innerHTML = '<option value="">Select Fee Name</option>';
+                result.classList.add('hidden');
+                return;
+            }
+            
+            const studentClass = parseInt(selectedOption.dataset.class);
+            
+            // Clear existing options
+            feeNameSelect.innerHTML = '<option value="">Select Fee Name</option>';
+            
+            // Filter fees applicable to this student's class
+            const applicableFees = mockFees.filter(fee => {
+                const feeFrom = fee.class_from || 1;
+                const feeTo = fee.class_to || 12;
+                return studentClass >= feeFrom && studentClass <= feeTo;
+            });
+            
+            // Populate fee dropdown
+            applicableFees.forEach(fee => {
+                const option = document.createElement('option');
+                option.value = fee.fee_name;
+                option.textContent = `${fee.fee_name} (₹${fee.amount.toLocaleString()})`;
+                feeNameSelect.appendChild(option);
+            });
+            
+            if (applicableFees.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No fees available for this class';
+                option.disabled = true;
+                feeNameSelect.appendChild(option);
+            }
+            
+            // Show result
+            result.classList.remove('hidden');
+            resultText.textContent = `Class ${studentClass} has ${applicableFees.length} applicable fees`;
+        }
+
+        // Add event listeners
+        document.getElementById('studentSelect').addEventListener('change', populateFeeNames);
+        
+        document.getElementById('feeNameSelect').addEventListener('change', function() {
+            const result = document.getElementById('result');
+            const resultText = document.getElementById('resultText');
+            const studentSelect = document.getElementById('studentSelect');
+            const selectedOption = studentSelect.options[studentSelect.selectedIndex];
+            
+            if (this.value && selectedOption) {
+                const studentClass = selectedOption.dataset.class;
+                resultText.textContent = `Selected: ${this.value} for Class ${studentClass} student`;
+                result.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
