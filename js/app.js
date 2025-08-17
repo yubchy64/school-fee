@@ -801,55 +801,157 @@ async function handleGenerateBills() {
     const generateBtn = document.getElementById('generateBillsBtn');
     const originalText = generateBtn.innerHTML;
     
+    // Get current billing period (year-month)
+    const currentDate = new Date();
+    const billingPeriod = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+    
     try {
         generateBtn.disabled = true;
         generateBtn.innerHTML = '<i data-lucide="loader" class="h-4 w-4 mr-2 inline animate-spin"></i>Generating...';
         
-        for (const student of studentsData) {
-            // Check if bill already exists for this student
-            const existingBills = billsData.filter(bill => bill.student_id === student.id);
-            
-            if (existingBills.length === 0) {
-                // Get applicable fees for this student's class
-                const studentClass = parseInt(student.class);
-                const applicableFees = feesData.filter(fee => {
-                    if (!fee.is_mandatory) return false; // Only mandatory fees for auto-generation
+        // Validate prerequisites
+        const validationResult = await validateBillGenerationPrerequisites(billingPeriod);
+        if (!validationResult.isValid) {
+            throw new Error(validationResult.error);
+        }
+        
+        const studentsToProcess = validationResult.eligibleStudents;
+        const applicableFeesMap = validationResult.applicableFeesMap;
+        
+        if (studentsToProcess.length === 0) {
+            showNotification(`All students already have bills for ${billingPeriod}. No new bills generated.`, 'info');
+            return;
+        }
+        
+        // Generate bills in batches to avoid overwhelming Firebase
+        const batchSize = 10;
+        const batches = [];
+        for (let i = 0; i < studentsToProcess.length; i += batchSize) {
+            batches.push(studentsToProcess.slice(i, i + batchSize));
+        }
+        
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+        
+        for (const batch of batches) {
+            const batchPromises = batch.map(async (student) => {
+                try {
+                    const applicableFees = applicableFeesMap[student.id] || [];
+                    const totalAmount = applicableFees.reduce((sum, fee) => sum + fee.amount, 0);
                     
-                    const feeFrom = fee.class_from || 1;
-                    const feeTo = fee.class_to || 12;
+                    if (applicableFees.length === 0) {
+                        throw new Error(`No applicable fees found for ${student.name} (Class ${student.class})`);
+                    }
                     
-                    return studentClass >= feeFrom && studentClass <= feeTo;
-                });
-                
-                const totalAmount = applicableFees.reduce((sum, fee) => sum + fee.amount, 0);
-                
-                if (applicableFees.length > 0) {
-                    await addDoc(collection(window.db, 'bills'), {
+                    const billData = {
                         student_id: student.id,
                         student_name: student.name,
                         student_class: student.class,
                         student_roll: student.roll_number,
+                        billing_period: billingPeriod,
                         fee_breakdown: applicableFees.map(fee => ({
+                            fee_id: fee.id,
                             fee_name: fee.fee_name,
-                            amount: fee.amount
+                            amount: fee.amount,
+                            fee_type: fee.is_mandatory ? 'mandatory' : 'optional'
                         })),
                         total_amount: totalAmount,
+                        paid_amount: 0,
+                        pending_amount: totalAmount,
                         bill_date: serverTimestamp(),
-                        status: 'unpaid'
-                    });
+                        due_date: new Date(currentDate.getTime() + (30 * 24 * 60 * 60 * 1000)), // 30 days from now
+                        status: 'unpaid',
+                        created_by: 'system',
+                        last_updated: serverTimestamp()
+                    };
+                    
+                    await addDoc(collection(window.db, 'bills'), billData);
+                    successCount++;
+                    
+                } catch (error) {
+                    errorCount++;
+                    errors.push(`${student.name}: ${error.message}`);
+                    console.error(`Error generating bill for ${student.name}:`, error);
                 }
-            }
+            });
+            
+            await Promise.all(batchPromises);
+            
+            // Update progress
+            const progress = Math.round(((batches.indexOf(batch) + 1) / batches.length) * 100);
+            generateBtn.innerHTML = `<i data-lucide="loader" class="h-4 w-4 mr-2 inline animate-spin"></i>Generating... ${progress}%`;
         }
         
-        showNotification('Bills generated successfully with class-specific fees!', 'success');
+        // Show detailed results
+        if (successCount > 0 && errorCount === 0) {
+            showNotification(`Successfully generated ${successCount} bills for ${billingPeriod}!`, 'success');
+        } else if (successCount > 0 && errorCount > 0) {
+            showNotification(`Generated ${successCount} bills successfully, ${errorCount} failed. Check console for details.`, 'warning');
+            console.warn('Bill generation errors:', errors);
+        } else {
+            throw new Error(`Failed to generate any bills. Errors: ${errors.join(', ')}`);
+        }
         
     } catch (error) {
-        console.error('Error generating bills:', error);
-        showNotification('Error generating bills. Please try again.', 'error');
+        console.error('Error in bill generation process:', error);
+        showNotification(`Bill generation failed: ${error.message}`, 'error');
     } finally {
         generateBtn.disabled = false;
         generateBtn.innerHTML = originalText;
         lucide.createIcons();
+    }
+}
+
+async function validateBillGenerationPrerequisites(billingPeriod) {
+    try {
+        // Check if students exist
+        if (!studentsData || studentsData.length === 0) {
+            return { isValid: false, error: 'No students found. Please add students first.' };
+        }
+        
+        // Check if mandatory fees exist
+        const mandatoryFees = feesData.filter(fee => fee.is_mandatory);
+        if (mandatoryFees.length === 0) {
+            return { isValid: false, error: 'No mandatory fees configured. Please set up fee structure first.' };
+        }
+        
+        // Find students who don't have bills for this period
+        const eligibleStudents = [];
+        const applicableFeesMap = {};
+        
+        for (const student of studentsData) {
+            // Check if student already has a bill for this period
+            const existingBill = billsData.find(bill => 
+                bill.student_id === student.id && 
+                bill.billing_period === billingPeriod
+            );
+            
+            if (!existingBill) {
+                // Get applicable fees for this student's class
+                const studentClass = parseInt(student.class);
+                const applicableFees = mandatoryFees.filter(fee => {
+                    const feeFrom = fee.class_from || 1;
+                    const feeTo = fee.class_to || 12;
+                    return studentClass >= feeFrom && studentClass <= feeTo;
+                });
+                
+                if (applicableFees.length > 0) {
+                    eligibleStudents.push(student);
+                    applicableFeesMap[student.id] = applicableFees;
+                }
+            }
+        }
+        
+        return {
+            isValid: true,
+            eligibleStudents,
+            applicableFeesMap,
+            billingPeriod
+        };
+        
+    } catch (error) {
+        return { isValid: false, error: `Validation failed: ${error.message}` };
     }
 }
 
@@ -986,10 +1088,11 @@ function renderFilteredBillsGrid() {
 }
 
 function renderBillCard(bill, grid) {
-    // Calculate pending due balance by subtracting payments from total bill amount
-    const studentPayments = paymentsData.filter(payment => payment.student_id === bill.student_id);
-    const totalPaid = studentPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-    const pendingDue = Math.max(0, bill.total_amount - totalPaid);
+    // Calculate bill-specific payment status more accurately
+    const billPaymentStatus = calculateBillPaymentStatus(bill);
+    const pendingDue = billPaymentStatus.pendingAmount;
+    const totalPaid = billPaymentStatus.paidAmount;
+    const actualStatus = billPaymentStatus.status;
     
     const card = document.createElement('div');
     card.className = 'bg-white border border-gray-200 rounded-lg p-6 hover-card';
@@ -1173,6 +1276,7 @@ async function toggleBillStatus(billId, currentStatus) {
 // ==================== RECEIPT FUNCTIONALITY ====================
 
 function initializeModalHandlers() {
+    // Receipt modal handlers
     const closeModalBtn = document.getElementById('closeReceiptModal');
     const printReceiptBtn = document.getElementById('printReceiptBtn');
     
@@ -1183,6 +1287,16 @@ function initializeModalHandlers() {
     if (printReceiptBtn) {
         printReceiptBtn.addEventListener('click', printReceipt);
     }
+    
+    // Initialize all other modal handlers
+    initializeEditStudentModal();
+    initializeEditPaymentModal();
+    initializeNewModalHandlers();
+    
+    // Update form handlers to use modals after a delay
+    setTimeout(() => {
+        updateFormHandlersToUseModals();
+    }, 1000);
 }
 
 function showReceipt(billId) {
@@ -1910,11 +2024,16 @@ function showPaymentHistory(studentId) {
 }
 
 function showAddPaymentForStudent(studentId) {
-    showAddPaymentForm();
-    const paymentStudentSelect = document.getElementById('paymentStudentId');
-    if (paymentStudentSelect) {
-        paymentStudentSelect.value = studentId;
-    }
+    showAddPaymentModal();
+    // Wait a moment for the modal to open, then set the student
+    setTimeout(() => {
+        const paymentStudentSelect = document.getElementById('addPaymentModalStudentId');
+        if (paymentStudentSelect) {
+            paymentStudentSelect.value = studentId;
+            // Trigger the fee population
+            populateModalFeeNames();
+        }
+    }, 100);
 }
 
 function showExportModal() {
@@ -2227,120 +2346,18 @@ function editPayment(paymentId) {
         return;
     }
     
-    // Hide the payment history modal
-    document.getElementById('paymentHistoryModal').classList.add('hidden');
-    
-    // Show the add payment form with pre-filled data
-    showAddPaymentForm();
-    
-    // Pre-fill the form with payment data
-    document.getElementById('paymentStudentId').value = payment.student_id;
-    document.getElementById('paymentAmount').value = payment.amount;
-    document.getElementById('paymentReference').value = payment.reference_number || '';
-    
-    // Trigger fee name population first, then set the value
-    populateFeeNames();
-    setTimeout(() => {
-        document.getElementById('feeNameSelect').value = payment.fee_name || '';
-    }, 100);
-    
-    // Format payment date for input field
-    const paymentDate = safeDate(payment.payment_date);
-    const formattedDate = paymentDate ? paymentDate.toISOString().split('T')[0] : '';
-    document.getElementById('paymentDate').value = formattedDate;
-    
-    // Disable student selection since we're editing an existing payment
-    document.getElementById('paymentStudentId').disabled = true;
-    
-    // Add a hidden field to track the payment ID being edited
-    let editPaymentIdInput = document.getElementById('editPaymentId');
-    if (!editPaymentIdInput) {
-        editPaymentIdInput = document.createElement('input');
-        editPaymentIdInput.type = 'hidden';
-        editPaymentIdInput.id = 'editPaymentId';
-        document.getElementById('paymentForm').appendChild(editPaymentIdInput);
-    }
-    editPaymentIdInput.value = paymentId;
-    
-    // Change the submit button text
-    const submitButton = document.querySelector('#paymentForm button[type="submit"]');
-    if (submitButton) {
-        submitButton.innerHTML = '<i data-lucide="save" class="h-4 w-4 mr-1 inline"></i>Update Payment';
-        lucide.createIcons();
+    // Find student details
+    const student = studentsData.find(s => s.id === payment.student_id);
+    if (!student) {
+        showNotification('Student not found for this payment.', 'error');
+        return;
     }
     
-    // Update the form submit handler to use edit functionality
-    document.getElementById('paymentForm').removeEventListener('submit', handleAddPayment);
-    document.getElementById('paymentForm').addEventListener('submit', handleEditPayment);
+    // Show the edit payment modal
+    showEditPaymentModal(payment, student);
 }
 
-async function handleEditPayment(e) {
-    e.preventDefault();
-    
-    const paymentId = document.getElementById('editPaymentId').value;
-    const studentId = document.getElementById('paymentStudentId').value;
-    const amount = parseFloat(document.getElementById('paymentAmount').value);
-    const feeName = document.getElementById('feeNameSelect').value;
-    const reference = document.getElementById('paymentReference').value;
-    const paymentDate = new Date(document.getElementById('paymentDate').value);
-    
-    // Find student details
-    const student = studentsData.find(s => s.id === studentId);
-    if (!student) {
-        showNotification('Student not found.', 'error');
-        return;
-    }
-    
-    // Validate fee selection
-    if (!feeName) {
-        showNotification('Please select a fee name.', 'error');
-        return;
-    }
-    
-    try {
-        // Update payment in database
-        await updateDoc(doc(window.db, 'payments', paymentId), {
-            amount: amount,
-            fee_name: feeName,
-            reference_number: reference,
-            payment_date: paymentDate,
-            updated_at: serverTimestamp()
-        });
-        
-        // Update bill status if payment covers the bill
-        const studentBills = billsData.filter(bill => bill.student_id === studentId && bill.status !== 'unpaid');
-        let remainingAmount = amount;
-        
-        for (const bill of studentBills) {
-            if (remainingAmount >= bill.total_amount) {
-                await updateDoc(doc(window.db, 'bills', bill.id), {
-                    status: 'paid',
-                    paid_date: serverTimestamp()
-                });
-                remainingAmount -= bill.total_amount;
-            } else if (remainingAmount > 0) {
-                // Partial payment - mark as partially paid
-                await updateDoc(doc(window.db, 'bills', bill.id), {
-                    status: 'partial',
-                    partial_amount: remainingAmount,
-                    last_payment_date: serverTimestamp()
-                });
-                remainingAmount = 0;
-            }
-            
-            if (remainingAmount <= 0) break;
-        }
-        
-        // Reset form and handlers
-        resetPaymentForm();
-        
-        showNotification('Payment updated successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Error updating payment:', error);
-        showNotification('Error updating payment. Please try again.', 'error');
-    }
-}
+// This old handleEditPayment function has been replaced by handleEditPaymentModal
 
 async function deletePayment(paymentId) {
     const payment = paymentsData.find(p => p.id === paymentId);
@@ -2613,10 +2630,18 @@ function renderFilteredStudentsTable() {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.roll_number}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button onclick="deleteStudent('${student.id}')"
-                        class="text-red-600 hover:text-red-900 ml-4">
-                    <i data-lucide="trash-2" class="h-4 w-4"></i>
-                </button>
+                <div class="flex space-x-2">
+                    <button onclick="showEditStudentModal('${student.id}')"
+                            class="text-blue-600 hover:text-blue-900"
+                            title="Edit Student">
+                        <i data-lucide="edit" class="h-4 w-4"></i>
+                    </button>
+                    <button onclick="deleteStudent('${student.id}')"
+                            class="text-red-600 hover:text-red-900"
+                            title="Delete Student">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </div>
             </td>
         `;
         tbody.appendChild(row);
@@ -3183,7 +3208,855 @@ function showImportResults(successCount, errorCount, errors) {
     document.getElementById('processImportBtn').style.display = 'none';
 }
 
+// ==================== MODAL-BASED STUDENT EDITING ====================
+
+function showEditStudentModal(studentId) {
+    const student = studentsData.find(s => s.id === studentId);
+    if (!student) {
+        showNotification('Student not found.', 'error');
+        return;
+    }
+    
+    // Pre-fill the form with student data
+    document.getElementById('editStudentName').value = student.name;
+    document.getElementById('editStudentClass').value = student.class;
+    document.getElementById('editStudentRoll').value = student.roll_number;
+    
+    // Store the student ID for the update operation
+    document.getElementById('editStudentForm').dataset.studentId = studentId;
+    
+    // Show the modal
+    document.getElementById('editStudentModal').classList.remove('hidden');
+    
+    // Focus on the name field
+    setTimeout(() => {
+        document.getElementById('editStudentName').focus();
+    }, 100);
+}
+
+function hideEditStudentModal() {
+    document.getElementById('editStudentModal').classList.add('hidden');
+    document.getElementById('editStudentForm').reset();
+    delete document.getElementById('editStudentForm').dataset.studentId;
+}
+
+async function handleEditStudent(e) {
+    e.preventDefault();
+    
+    const studentId = document.getElementById('editStudentForm').dataset.studentId;
+    const name = document.getElementById('editStudentName').value.trim();
+    const studentClass = document.getElementById('editStudentClass').value;
+    const rollNumber = document.getElementById('editStudentRoll').value;
+    
+    if (!studentId) {
+        showNotification('Student ID not found.', 'error');
+        return;
+    }
+    
+    // Validate inputs
+    if (!name) {
+        showNotification('Student name is required.', 'error');
+        return;
+    }
+    
+    if (!studentClass) {
+        showNotification('Please select a class.', 'error');
+        return;
+    }
+    
+    if (!rollNumber || parseInt(rollNumber) < 1) {
+        showNotification('Please enter a valid roll number.', 'error');
+        return;
+    }
+    
+    // Check for duplicate roll number in the same class
+    const duplicate = studentsData.find(s => 
+        s.id !== studentId && 
+        s.class === studentClass && 
+        s.roll_number == rollNumber
+    );
+    
+    if (duplicate) {
+        showNotification(`Roll number ${rollNumber} already exists in Class ${studentClass} for student ${duplicate.name}.`, 'error');
+        return;
+    }
+    
+    try {
+        // Update the student in Firestore
+        await updateDoc(doc(window.db, 'students', studentId), {
+            name: name,
+            class: studentClass,
+            roll_number: rollNumber,
+            updated_at: serverTimestamp()
+        });
+        
+        // Update associated bills and payments with new student info
+        await updateStudentReferences(studentId, name, studentClass, rollNumber);
+        
+        hideEditStudentModal();
+        showNotification('Student updated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error updating student:', error);
+        showNotification('Error updating student. Please try again.', 'error');
+    }
+}
+
+async function updateStudentReferences(studentId, newName, newClass, newRollNumber) {
+    try {
+        // Update bills
+        const studentBills = billsData.filter(bill => bill.student_id === studentId);
+        for (const bill of studentBills) {
+            await updateDoc(doc(window.db, 'bills', bill.id), {
+                student_name: newName,
+                student_class: newClass,
+                student_roll: newRollNumber
+            });
+        }
+        
+        // Update payments
+        const studentPayments = paymentsData.filter(payment => payment.student_id === studentId);
+        for (const payment of studentPayments) {
+            await updateDoc(doc(window.db, 'payments', payment.id), {
+                student_name: newName,
+                student_class: newClass,
+                student_roll: newRollNumber
+            });
+        }
+        
+        console.log(`Updated ${studentBills.length} bills and ${studentPayments.length} payments for student ${newName}`);
+        
+    } catch (error) {
+        console.error('Error updating student references:', error);
+        showNotification('Student updated but some references may not be updated. Please refresh and check.', 'warning');
+    }
+}
+
+// Initialize modal handlers for edit student modal
+function initializeEditStudentModal() {
+    const closeEditStudentModal = document.getElementById('closeEditStudentModal');
+    const cancelEditStudentBtn = document.getElementById('cancelEditStudentBtn');
+    const editStudentForm = document.getElementById('editStudentForm');
+    
+    if (closeEditStudentModal) {
+        closeEditStudentModal.addEventListener('click', hideEditStudentModal);
+    }
+    
+    if (cancelEditStudentBtn) {
+        cancelEditStudentBtn.addEventListener('click', hideEditStudentModal);
+    }
+    
+    if (editStudentForm) {
+        editStudentForm.addEventListener('submit', handleEditStudent);
+    }
+    
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        const editStudentModal = document.getElementById('editStudentModal');
+        if (editStudentModal && e.target === editStudentModal) {
+            hideEditStudentModal();
+        }
+    });
+}
+
+// ==================== MODAL-BASED ADD STUDENT FUNCTIONALITY ====================
+
+function showAddStudentModal() {
+    document.getElementById('addStudentModal').classList.remove('hidden');
+    
+    // Focus on the name field
+    setTimeout(() => {
+        document.getElementById('addStudentModalName').focus();
+    }, 100);
+}
+
+function hideAddStudentModal() {
+    document.getElementById('addStudentModal').classList.add('hidden');
+    document.getElementById('addStudentModalForm').reset();
+}
+
+async function handleAddStudentModal(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('addStudentModalName').value.trim();
+    const studentClass = document.getElementById('addStudentModalClass').value;
+    const rollNumber = document.getElementById('addStudentModalRoll').value;
+    
+    // Validate inputs
+    if (!name) {
+        showNotification('Student name is required.', 'error');
+        return;
+    }
+    
+    if (!studentClass) {
+        showNotification('Please select a class.', 'error');
+        return;
+    }
+    
+    if (!rollNumber || parseInt(rollNumber) < 1) {
+        showNotification('Please enter a valid roll number.', 'error');
+        return;
+    }
+    
+    // Check for duplicate roll number in the same class
+    const duplicate = studentsData.find(s => 
+        s.class === studentClass && 
+        s.roll_number == rollNumber
+    );
+    
+    if (duplicate) {
+        showNotification(`Roll number ${rollNumber} already exists in Class ${studentClass} for student ${duplicate.name}.`, 'error');
+        return;
+    }
+    
+    try {
+        await addDoc(collection(window.db, 'students'), {
+            name: name,
+            class: studentClass,
+            roll_number: rollNumber,
+            created_at: serverTimestamp()
+        });
+        
+        hideAddStudentModal();
+        showNotification('Student added successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error adding student:', error);
+        showNotification('Error adding student. Please try again.', 'error');
+    }
+}
+
+// ==================== MODAL-BASED ADD PAYMENT FUNCTIONALITY ====================
+
+function showAddPaymentModal() {
+    // Populate student dropdown
+    const studentSelect = document.getElementById('addPaymentModalStudentId');
+    if (studentSelect) {
+        studentSelect.innerHTML = '<option value="">Select Student</option>';
+        
+        studentsData.forEach(student => {
+            const option = document.createElement('option');
+            option.value = student.id;
+            option.textContent = `${student.name} (Class ${student.class}, Roll ${student.roll_number})`;
+            studentSelect.appendChild(option);
+        });
+        
+        // Add event listener to populate fee names when student is selected
+        studentSelect.addEventListener('change', populateModalFeeNames);
+    }
+    
+    // Set today's date as default
+    const paymentDateInput = document.getElementById('addPaymentModalDate');
+    if (paymentDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        paymentDateInput.value = today;
+    }
+    
+    document.getElementById('addPaymentModal').classList.remove('hidden');
+    
+    // Focus on the student dropdown
+    setTimeout(() => {
+        document.getElementById('addPaymentModalStudentId').focus();
+    }, 100);
+}
+
+function hideAddPaymentModal() {
+    document.getElementById('addPaymentModal').classList.add('hidden');
+    document.getElementById('addPaymentModalForm').reset();
+}
+
+function populateModalFeeNames() {
+    const studentId = document.getElementById('addPaymentModalStudentId').value;
+    const feeNameSelect = document.getElementById('addPaymentModalFeeSelect');
+    
+    if (!studentId || !feeNameSelect) {
+        return;
+    }
+    
+    // Clear existing options
+    feeNameSelect.innerHTML = '<option value="">Select Fee Name</option>';
+    
+    // Find the selected student
+    const student = studentsData.find(s => s.id === studentId);
+    if (!student) {
+        return;
+    }
+    
+    const studentClass = parseInt(student.class);
+    
+    // Filter fees applicable to this student's class
+    const applicableFees = feesData.filter(fee => {
+        const feeFrom = fee.class_from || 1;
+        const feeTo = fee.class_to || 12;
+        return studentClass >= feeFrom && studentClass <= feeTo;
+    });
+    
+    // Populate fee dropdown
+    applicableFees.forEach(fee => {
+        const option = document.createElement('option');
+        option.value = fee.fee_name;
+        option.textContent = `${fee.fee_name} (₹${fee.amount.toLocaleString()})`;
+        feeNameSelect.appendChild(option);
+    });
+    
+    if (applicableFees.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No fees available for this class';
+        option.disabled = true;
+        feeNameSelect.appendChild(option);
+    }
+}
+
+async function handleAddPaymentModal(e) {
+    e.preventDefault();
+    
+    const studentId = document.getElementById('addPaymentModalStudentId').value;
+    const amount = parseFloat(document.getElementById('addPaymentModalAmount').value);
+    const feeName = document.getElementById('addPaymentModalFeeSelect').value;
+    const reference = document.getElementById('addPaymentModalReference').value;
+    const paymentDate = new Date(document.getElementById('addPaymentModalDate').value);
+    
+    // Find student details
+    const student = studentsData.find(s => s.id === studentId);
+    if (!student) {
+        showNotification('Please select a valid student.', 'error');
+        return;
+    }
+    
+    // Validate fee selection
+    if (!feeName) {
+        showNotification('Please select a fee name.', 'error');
+        return;
+    }
+    
+    if (!amount || amount <= 0) {
+        showNotification('Please enter a valid amount.', 'error');
+        return;
+    }
+    
+    try {
+        // Add payment to database
+        await addDoc(collection(window.db, 'payments'), {
+            student_id: studentId,
+            student_name: student.name,
+            student_class: student.class,
+            student_roll: student.roll_number,
+            amount: amount,
+            fee_name: feeName,
+            reference_number: reference,
+            payment_date: paymentDate,
+            created_at: serverTimestamp()
+        });
+        
+        // Update bill status if payment covers the bill
+        const studentBills = billsData.filter(bill => bill.student_id === studentId && bill.status === 'unpaid');
+        let remainingAmount = amount;
+        
+        for (const bill of studentBills) {
+            if (remainingAmount >= bill.total_amount) {
+                await updateDoc(doc(window.db, 'bills', bill.id), {
+                    status: 'paid',
+                    paid_date: serverTimestamp()
+                });
+                remainingAmount -= bill.total_amount;
+            } else if (remainingAmount > 0) {
+                // Partial payment - mark as partially paid
+                await updateDoc(doc(window.db, 'bills', bill.id), {
+                    status: 'partial',
+                    partial_amount: remainingAmount,
+                    last_payment_date: serverTimestamp()
+                });
+                remainingAmount = 0;
+            }
+            
+            if (remainingAmount <= 0) break;
+        }
+        
+        hideAddPaymentModal();
+        showNotification('Payment added successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error adding payment:', error);
+        showNotification('Error adding payment. Please try again.', 'error');
+    }
+}
+
+// ==================== MODAL-BASED ADD FEE CATEGORY FUNCTIONALITY ====================
+
+function showAddFeeModal() {
+    document.getElementById('addFeeModal').classList.remove('hidden');
+    
+    // Focus on the fee name field
+    setTimeout(() => {
+        document.getElementById('addFeeModalName').focus();
+    }, 100);
+}
+
+function hideAddFeeModal() {
+    document.getElementById('addFeeModal').classList.add('hidden');
+    document.getElementById('addFeeModalForm').reset();
+}
+
+async function handleAddFeeModal(e) {
+    e.preventDefault();
+    
+    const feeName = document.getElementById('addFeeModalName').value.trim();
+    const feeAmount = parseFloat(document.getElementById('addFeeModalAmount').value);
+    const isMandatory = document.getElementById('addFeeModalMandatory').value === 'true';
+    const classFrom = parseInt(document.getElementById('addFeeModalClassFrom').value);
+    const classTo = parseInt(document.getElementById('addFeeModalClassTo').value);
+    
+    // Validate inputs
+    if (!feeName) {
+        showNotification('Fee name is required.', 'error');
+        return;
+    }
+    
+    if (!feeAmount || feeAmount <= 0) {
+        showNotification('Please enter a valid amount.', 'error');
+        return;
+    }
+    
+    if (!classFrom || !classTo) {
+        showNotification('Please select both from and to class.', 'error');
+        return;
+    }
+    
+    // Validate class range
+    if (classFrom > classTo) {
+        showNotification('From Class cannot be greater than To Class.', 'error');
+        return;
+    }
+    
+    try {
+        await addDoc(collection(window.db, 'fee_structure'), {
+            fee_name: feeName,
+            amount: feeAmount,
+            is_mandatory: isMandatory,
+            class_from: classFrom,
+            class_to: classTo,
+            created_at: serverTimestamp()
+        });
+        
+        hideAddFeeModal();
+        showNotification('Fee category added successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error adding fee:', error);
+        showNotification('Error adding fee category. Please try again.', 'error');
+    }
+}
+
+// Initialize modal handlers for all new modals
+function initializeNewModalHandlers() {
+    // Add Student Modal
+    const closeAddStudentModal = document.getElementById('closeAddStudentModal');
+    const cancelAddStudentBtn = document.getElementById('cancelAddStudentBtn');
+    const addStudentModalForm = document.getElementById('addStudentModalForm');
+    
+    if (closeAddStudentModal) {
+        closeAddStudentModal.addEventListener('click', hideAddStudentModal);
+    }
+    if (cancelAddStudentBtn) {
+        cancelAddStudentBtn.addEventListener('click', hideAddStudentModal);
+    }
+    if (addStudentModalForm) {
+        addStudentModalForm.addEventListener('submit', handleAddStudentModal);
+    }
+    
+    // Add Payment Modal
+    const closeAddPaymentModal = document.getElementById('closeAddPaymentModal');
+    const cancelAddPaymentBtn = document.getElementById('cancelAddPaymentBtn');
+    const addPaymentModalForm = document.getElementById('addPaymentModalForm');
+    
+    if (closeAddPaymentModal) {
+        closeAddPaymentModal.addEventListener('click', hideAddPaymentModal);
+    }
+    if (cancelAddPaymentBtn) {
+        cancelAddPaymentBtn.addEventListener('click', hideAddPaymentModal);
+    }
+    if (addPaymentModalForm) {
+        addPaymentModalForm.addEventListener('submit', handleAddPaymentModal);
+    }
+    
+    // Add Fee Modal
+    const closeAddFeeModal = document.getElementById('closeAddFeeModal');
+    const cancelAddFeeBtn = document.getElementById('cancelAddFeeBtn');
+    const addFeeModalForm = document.getElementById('addFeeModalForm');
+    
+    if (closeAddFeeModal) {
+        closeAddFeeModal.addEventListener('click', hideAddFeeModal);
+    }
+    if (cancelAddFeeBtn) {
+        cancelAddFeeBtn.addEventListener('click', hideAddFeeModal);
+    }
+    if (addFeeModalForm) {
+        addFeeModalForm.addEventListener('submit', handleAddFeeModal);
+    }
+    
+    // Close modals when clicking outside
+    document.addEventListener('click', function(e) {
+        const addStudentModal = document.getElementById('addStudentModal');
+        const addPaymentModal = document.getElementById('addPaymentModal');
+        const addFeeModal = document.getElementById('addFeeModal');
+        
+        if (addStudentModal && e.target === addStudentModal) {
+            hideAddStudentModal();
+        }
+        if (addPaymentModal && e.target === addPaymentModal) {
+            hideAddPaymentModal();
+        }
+        if (addFeeModal && e.target === addFeeModal) {
+            hideAddFeeModal();
+        }
+    });
+}
+
+// Update the existing form handlers to use modal versions
+function updateFormHandlersToUseModals() {
+    // Force hide all inline forms first
+    const addStudentForm = document.getElementById('addStudentForm');
+    const addPaymentForm = document.getElementById('addPaymentForm');
+    const addFeeForm = document.getElementById('addFeeForm');
+    
+    if (addStudentForm) addStudentForm.classList.add('hidden');
+    if (addPaymentForm) addPaymentForm.classList.add('hidden');
+    if (addFeeForm) addFeeForm.classList.add('hidden');
+    
+    // Clone buttons to remove all existing event listeners
+    const addStudentBtn = document.getElementById('addStudentBtn');
+    if (addStudentBtn) {
+        const newStudentBtn = addStudentBtn.cloneNode(true);
+        addStudentBtn.parentNode.replaceChild(newStudentBtn, addStudentBtn);
+        newStudentBtn.addEventListener('click', showAddStudentModal);
+    }
+    
+    const addPaymentBtn = document.getElementById('addPaymentBtn');
+    if (addPaymentBtn) {
+        const newPaymentBtn = addPaymentBtn.cloneNode(true);
+        addPaymentBtn.parentNode.replaceChild(newPaymentBtn, addPaymentBtn);
+        newPaymentBtn.addEventListener('click', showAddPaymentModal);
+    }
+    
+    const addFeeBtn = document.getElementById('addFeeBtn');
+    if (addFeeBtn) {
+        const newFeeBtn = addFeeBtn.cloneNode(true);
+        addFeeBtn.parentNode.replaceChild(newFeeBtn, addFeeBtn);
+        newFeeBtn.addEventListener('click', showAddFeeModal);
+    }
+}
+
+// Initialize the edit student modal when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeEditStudentModal();
+    initializeNewModalHandlers();
+    // Delay updating form handlers to ensure existing handlers are set up first
+    setTimeout(updateFormHandlersToUseModals, 500);
+});
+
+// ==================== BILL PAYMENT STATUS CALCULATION ====================
+
+function calculateBillPaymentStatus(bill) {
+    try {
+        // Find all payments for this specific student
+        const studentPayments = paymentsData.filter(payment => 
+            payment.student_id === bill.student_id
+        );
+        
+        // Calculate total paid by this student
+        const totalPaid = studentPayments.reduce((sum, payment) => 
+            sum + (payment.amount || 0), 0
+        );
+        
+        // Get all bills for this student to properly allocate payments
+        const studentBills = billsData.filter(b => b.student_id === bill.student_id)
+            .sort((a, b) => {
+                // Sort by bill date (oldest first for payment allocation)
+                const aDate = safeDate(a.bill_date) || new Date(0);
+                const bDate = safeDate(b.bill_date) || new Date(0);
+                return aDate - bDate;
+            });
+        
+        // Allocate payments to bills in chronological order
+        let remainingPayments = totalPaid;
+        let billPaidAmount = 0;
+        
+        for (const studentBill of studentBills) {
+            const billAmount = studentBill.total_amount || 0;
+            
+            if (studentBill.id === bill.id) {
+                // This is our target bill
+                if (remainingPayments >= billAmount) {
+                    billPaidAmount = billAmount;
+                } else if (remainingPayments > 0) {
+                    billPaidAmount = remainingPayments;
+                } else {
+                    billPaidAmount = 0;
+                }
+                break;
+            } else {
+                // Previous bill - deduct its amount from remaining payments
+                if (remainingPayments >= billAmount) {
+                    remainingPayments -= billAmount;
+                } else {
+                    remainingPayments = 0;
+                }
+            }
+        }
+        
+        const pendingAmount = Math.max(0, (bill.total_amount || 0) - billPaidAmount);
+        
+        // Determine status based on payment allocation
+        let status = 'unpaid';
+        if (billPaidAmount >= (bill.total_amount || 0)) {
+            status = 'paid';
+        } else if (billPaidAmount > 0) {
+            status = 'partial';
+        }
+        
+        // Check if overdue
+        if (status !== 'paid') {
+            const billDate = safeDate(bill.bill_date);
+            const dueDate = safeDate(bill.due_date) || (billDate ? new Date(billDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null);
+            
+            if (dueDate && new Date() > dueDate) {
+                status = 'overdue';
+            }
+        }
+        
+        return {
+            paidAmount: billPaidAmount,
+            pendingAmount: pendingAmount,
+            status: status,
+            totalStudentPayments: totalPaid,
+            isOverdue: status === 'overdue'
+        };
+        
+    } catch (error) {
+        console.error('Error calculating bill payment status:', error);
+        // Fallback to simple calculation
+        const studentPayments = paymentsData.filter(payment => 
+            payment.student_id === bill.student_id
+        );
+        const totalPaid = studentPayments.reduce((sum, payment) => 
+            sum + (payment.amount || 0), 0
+        );
+        const pendingAmount = Math.max(0, (bill.total_amount || 0) - totalPaid);
+        
+        return {
+            paidAmount: Math.min(totalPaid, bill.total_amount || 0),
+            pendingAmount: pendingAmount,
+            status: pendingAmount === 0 ? 'paid' : (totalPaid > 0 ? 'partial' : 'unpaid'),
+            totalStudentPayments: totalPaid,
+            isOverdue: false
+        };
+    }
+}
+
+// Enhanced bill status update function
+async function updateBillStatusBasedOnPayments(studentId) {
+    try {
+        const studentBills = billsData.filter(bill => bill.student_id === studentId);
+        
+        for (const bill of studentBills) {
+            const paymentStatus = calculateBillPaymentStatus(bill);
+            
+            // Only update if status has changed
+            if (bill.status !== paymentStatus.status || 
+                (bill.paid_amount || 0) !== paymentStatus.paidAmount ||
+                (bill.pending_amount || 0) !== paymentStatus.pendingAmount) {
+                
+                const updateData = {
+                    status: paymentStatus.status,
+                    paid_amount: paymentStatus.paidAmount,
+                    pending_amount: paymentStatus.pendingAmount,
+                    last_updated: serverTimestamp()
+                };
+                
+                if (paymentStatus.status === 'paid') {
+                    updateData.paid_date = serverTimestamp();
+                }
+                
+                await updateDoc(doc(window.db, 'bills', bill.id), updateData);
+                console.log(`Updated bill ${bill.id} status to ${paymentStatus.status}`);
+            }
+        }
+    } catch (error) {
+        console.error('Error updating bill statuses:', error);
+    }
+}
+
+// ==================== MODAL-BASED EDIT PAYMENT FUNCTIONALITY ====================
+
+function showEditPaymentModal(payment, student) {
+    // Pre-fill the form with payment data
+    document.getElementById('editPaymentStudentName').value = `${student.name} (Class ${student.class}, Roll ${student.roll_number})`;
+    document.getElementById('editPaymentStudentId').value = payment.student_id;
+    document.getElementById('editPaymentAmount').value = payment.amount;
+    document.getElementById('editPaymentReference').value = payment.reference_number || '';
+    
+    // Format payment date for input field
+    const paymentDate = safeDate(payment.payment_date);
+    const formattedDate = paymentDate ? paymentDate.toISOString().split('T')[0] : '';
+    document.getElementById('editPaymentDate').value = formattedDate;
+    
+    // Store the payment ID for the update operation
+    document.getElementById('editPaymentId').value = payment.id;
+    
+    // Populate fee names for this student's class
+    populateEditModalFeeNames(student);
+    
+    // Set the current fee name after a short delay
+    setTimeout(() => {
+        document.getElementById('editPaymentFeeSelect').value = payment.fee_name || '';
+    }, 100);
+    
+    // Show the modal
+    document.getElementById('editPaymentModal').classList.remove('hidden');
+    
+    // Focus on the amount field
+    setTimeout(() => {
+        document.getElementById('editPaymentAmount').focus();
+        document.getElementById('editPaymentAmount').select();
+    }, 150);
+}
+
+function hideEditPaymentModal() {
+    document.getElementById('editPaymentModal').classList.add('hidden');
+    document.getElementById('editPaymentModalForm').reset();
+}
+
+function populateEditModalFeeNames(student) {
+    const feeNameSelect = document.getElementById('editPaymentFeeSelect');
+    
+    if (!student || !feeNameSelect) {
+        return;
+    }
+    
+    // Clear existing options
+    feeNameSelect.innerHTML = '<option value="">Select Fee Name</option>';
+    
+    const studentClass = parseInt(student.class);
+    
+    // Filter fees applicable to this student's class
+    const applicableFees = feesData.filter(fee => {
+        const feeFrom = fee.class_from || 1;
+        const feeTo = fee.class_to || 12;
+        return studentClass >= feeFrom && studentClass <= feeTo;
+    });
+    
+    // Populate fee dropdown
+    applicableFees.forEach(fee => {
+        const option = document.createElement('option');
+        option.value = fee.fee_name;
+        option.textContent = `${fee.fee_name} (₹${fee.amount.toLocaleString()})`;
+        feeNameSelect.appendChild(option);
+    });
+    
+    if (applicableFees.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No fees available for this class';
+        option.disabled = true;
+        feeNameSelect.appendChild(option);
+    }
+}
+
+async function handleEditPaymentModal(e) {
+    e.preventDefault();
+    
+    const paymentId = document.getElementById('editPaymentId').value;
+    const studentId = document.getElementById('editPaymentStudentId').value;
+    const amount = parseFloat(document.getElementById('editPaymentAmount').value);
+    const feeName = document.getElementById('editPaymentFeeSelect').value;
+    const reference = document.getElementById('editPaymentReference').value;
+    const paymentDate = new Date(document.getElementById('editPaymentDate').value);
+    
+    // Find student details
+    const student = studentsData.find(s => s.id === studentId);
+    if (!student) {
+        showNotification('Student not found.', 'error');
+        return;
+    }
+    
+    // Validate inputs
+    if (!feeName) {
+        showNotification('Please select a fee name.', 'error');
+        return;
+    }
+    
+    if (!amount || amount <= 0) {
+        showNotification('Please enter a valid amount.', 'error');
+        return;
+    }
+    
+    try {
+        // Update payment in database
+        await updateDoc(doc(window.db, 'payments', paymentId), {
+            amount: amount,
+            fee_name: feeName,
+            reference_number: reference,
+            payment_date: paymentDate,
+            updated_at: serverTimestamp()
+        });
+        
+        // Update bill statuses based on the new payment amount
+        await updateBillStatusBasedOnPayments(studentId);
+        
+        hideEditPaymentModal();
+        
+        // Hide the payment history modal as well
+        document.getElementById('paymentHistoryModal').classList.add('hidden');
+        
+        showNotification('Payment updated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error updating payment:', error);
+        showNotification('Error updating payment. Please try again.', 'error');
+    }
+}
+
+// Initialize edit payment modal handlers
+function initializeEditPaymentModal() {
+    const closeEditPaymentModal = document.getElementById('closeEditPaymentModal');
+    const cancelEditPaymentBtn = document.getElementById('cancelEditPaymentBtn');
+    const editPaymentModalForm = document.getElementById('editPaymentModalForm');
+    
+    if (closeEditPaymentModal) {
+        closeEditPaymentModal.addEventListener('click', hideEditPaymentModal);
+    }
+    
+    if (cancelEditPaymentBtn) {
+        cancelEditPaymentBtn.addEventListener('click', hideEditPaymentModal);
+    }
+    
+    if (editPaymentModalForm) {
+        editPaymentModalForm.addEventListener('submit', handleEditPaymentModal);
+    }
+    
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        const editPaymentModal = document.getElementById('editPaymentModal');
+        if (editPaymentModal && e.target === editPaymentModal) {
+            hideEditPaymentModal();
+        }
+    });
+}
+
 // Make functions globally available
+window.calculateBillPaymentStatus = calculateBillPaymentStatus;
+window.updateBillStatusBasedOnPayments = updateBillStatusBasedOnPayments;
+window.showEditStudentModal = showEditStudentModal;
+window.hideEditStudentModal = hideEditStudentModal;
+window.showAddStudentModal = showAddStudentModal;
+window.hideAddStudentModal = hideAddStudentModal;
+window.showAddPaymentModal = showAddPaymentModal;
+window.hideAddPaymentModal = hideAddPaymentModal;
+window.showEditPaymentModal = showEditPaymentModal;
+window.hideEditPaymentModal = hideEditPaymentModal;
+window.showAddFeeModal = showAddFeeModal;
+window.hideAddFeeModal = hideAddFeeModal;
 window.startEditing = startEditing;
 window.saveEdit = saveEdit;
 window.cancelEditing = cancelEditing;
